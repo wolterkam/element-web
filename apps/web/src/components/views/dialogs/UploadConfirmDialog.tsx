@@ -9,6 +9,7 @@ Please see LICENSE files in the repository root for full details.
 
 import React, { type JSX } from "react";
 import { FilesIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
+import { getMetadata } from "meta-png";
 
 import { _t } from "../../../languageHandler";
 import BaseDialog from "./BaseDialog";
@@ -39,6 +40,15 @@ export default class UploadConfirmDialog extends React.Component<IProps, IState>
     }
 
     public componentDidMount(): void {
+        if (this.props.file.type === "image/png") {
+            void this.props.file.arrayBuffer().then((buffer) => {
+                const dcSource = getMetadata(new Uint8Array(buffer), "dc:source");
+                if (dcSource) {
+                    this.setState({ objectUrl: dcSource });
+                }
+            });
+        }
+
         if (this.props.file.type.startsWith("image/") || this.props.file.type.startsWith("video/")) {
             this.setState({
                 // We do not filter the mimetype using getBlobSafeMimeType here as if the user is uploading the file
@@ -50,7 +60,7 @@ export default class UploadConfirmDialog extends React.Component<IProps, IState>
     }
 
     public componentWillUnmount(): void {
-        if (this.state.objectUrl) URL.revokeObjectURL(this.state.objectUrl);
+        if (this.state.objectUrl?.startsWith("blob:")) URL.revokeObjectURL(this.state.objectUrl);
     }
 
     private onCancelClick = (): void => {

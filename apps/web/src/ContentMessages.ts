@@ -186,6 +186,12 @@ async function infoForImageFile(matrixClient: MatrixClient, roomId: string, imag
     }
 
     const uploadResult = await uploadFile(matrixClient, roomId, result.thumbnail);
+    console.log("thumbnail upload result", {
+        url: uploadResult.url,
+        fileUrl: uploadResult.file?.url,
+        mimetype: imageInfo.thumbnail_info?.mimetype,
+        size: imageInfo.thumbnail_info?.size,
+    });
 
     imageInfo["thumbnail_url"] = uploadResult.url;
     imageInfo["thumbnail_file"] = uploadResult.file;
@@ -638,6 +644,13 @@ export default class ContentMessages {
             const result = await uploadFile(matrixClient, roomId, file, onProgress, upload.abortController);
             content.file = result.file;
             content.url = result.url;
+            console.log("upload result", {
+                fileName,
+                url: result.url,
+                fileUrl: result.file?.url,
+                mimetype: content.info.mimetype,
+                size: file.size,
+            });
 
             if (upload.cancelled) throw new UploadCanceledError();
             // Await previous message being sent into the room

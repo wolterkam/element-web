@@ -88,6 +88,7 @@
         "matrix-js-sdk": "github:matrix-org/matrix-js-sdk#develop",
         "matrix-widget-api": "^1.16.1",
         "memoize-one": "^6.0.0",
+        "meta-png": "^1.0.6",
         "mime": "^4.0.4",
         "oidc-client-ts": "^3.0.1",
         "opus-recorder": "^8.0.3",

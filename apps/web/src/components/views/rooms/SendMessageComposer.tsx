@@ -20,6 +20,7 @@ import { type DebouncedFunc, throttle } from "lodash";
 import { logger } from "matrix-js-sdk/src/logger";
 import { type Composer as ComposerEvent } from "@matrix-org/analytics-events/types/typescript/Composer";
 import { type RoomMessageEventContent } from "matrix-js-sdk/src/types";
+import { addMetadata } from "meta-png";
 
 import dis from "../../../dispatcher/dispatcher";
 import EditorModel from "../../../editor/model";
@@ -556,6 +557,43 @@ export class SendMessageComposer extends React.Component<ISendMessageComposerPro
     };
 
     private onPaste = (event: Event | SyntheticEvent, data: DataTransfer): boolean => {
+        // When pasting a GIF copied from a web browser, it presents as a static image/png
+        // alongside a derivable source URL. We persist this URL in the file metadata via
+        // the dc:source tag, in accordance with the DCMI Source Element specification:
+        // https://www.dublincore.org/specifications/dublin-core/dcmi-terms/elements11/source/
+        if (data.files.length === 1 && /<img\b.+?\.gif\b(?!.*<img\b.+?\.gif\b)/is.test(data.getData("text/html"))) {
+            const gifUrl = data.getData("text/html").match(/https?:\/\/\S+?\.gif(?:\?\S*)?/i)?.[0];
+            const file = data.files[0];
+
+            if (gifUrl && file.type === "image/png") {
+                void file.arrayBuffer().then(
+                    (
+                        buffer, // Replace with .bytes() when -2 browser versions support it
+                    ) =>
+                        ContentMessages.sharedInstance().sendContentListToRoom(
+                            [
+                                new File(
+                                    [
+                                        new Blob(
+                                            [Uint8Array.from(addMetadata(new Uint8Array(buffer), "dc:source", gifUrl))],
+                                            file,
+                                        ),
+                                    ],
+                                    file.name,
+                                    file,
+                                ),
+                            ],
+                            this.props.room.roomId,
+                            this.props.relation,
+                            this.context.replyToEvent,
+                            this.props.mxClient,
+                            this.context.timelineRenderingType,
+                        ),
+                );
+                return true;
+            }
+        }
+
         // Prioritize text on the clipboard over files if RTF is present as Office on macOS puts a bitmap
         // in the clipboard as well as the content being copied. Modern versions of Office seem to not do this anymore.
         // We check text/rtf instead of text/plain as when copy+pasting a file from Finder or Gnome Image Viewer

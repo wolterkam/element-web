@@ -16,6 +16,7 @@ import { ClientEvent } from "matrix-js-sdk/src/matrix";
 import { type ImageContent } from "matrix-js-sdk/src/types";
 import { Tooltip } from "@vector-im/compound-web";
 import { ImageErrorIcon } from "@vector-im/compound-design-tokens/assets/web/icons";
+import { getMetadata } from "meta-png";
 
 import MFileBody from "./MFileBody";
 import Modal from "../../../Modal";
@@ -37,6 +38,7 @@ import { DecryptError, DownloadError } from "../../../utils/DecryptFile";
 import { HiddenMediaPlaceholder } from "./HiddenMediaPlaceholder";
 import { useMediaVisible } from "../../../hooks/useMediaVisible";
 import { isMimeTypeAllowed } from "../../../utils/blobs.ts";
+import MRemoteAnimatedOverlay from "./MRemoteAnimatedOverlay";
 
 enum Placeholder {
     NoImage,
@@ -57,6 +59,7 @@ interface IState {
     hover: boolean;
     focus: boolean;
     placeholder: Placeholder;
+    dcSource?: string;
 }
 
 interface IProps extends IBodyProps {
@@ -350,6 +353,14 @@ export class MImageBodyInner extends React.Component<IProps, IState> {
             thumbUrl,
             isAnimated,
         });
+
+        if (content.info?.mimetype === "image/png" && contentUrl) {
+            try {
+                const buffer = await fetch(contentUrl).then((r) => r.arrayBuffer());
+                const dcSource = getMetadata(new Uint8Array(buffer), "dc:source");
+                if (!this.unmounted && dcSource) this.setState({ dcSource });
+            } catch {}
+        }
     }
 
     private clearBlurhashTimeout(): void {
@@ -574,8 +585,9 @@ export class MImageBodyInner extends React.Component<IProps, IState> {
             >
                 {placeholder}
 
-                <div style={sizing}>
+                <div style={{ ...sizing, position: "relative" }}>
                     {img}
+                    <MRemoteAnimatedOverlay src={this.state.dcSource} />
                     {gifLabel}
                     {banner}
                 </div>
